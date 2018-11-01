@@ -1,0 +1,5 @@
+Package          Version
+---------------- -------
+pywin32          224  
+Scrapy           1.5.1
+
