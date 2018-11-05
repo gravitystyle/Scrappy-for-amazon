@@ -1,3 +1,6 @@
+#! /usr/bin/env python3
+# coding: utf-8
+
 import scrapy
 import json
 
@@ -18,7 +21,7 @@ def createUrls(categories, licenses): # create a dictionnary of the research Url
 			licenseSplited = license.lower().split() #Create a list of words from the string of the license
 			wordsToSearch.extend(categorySplited) #add the list of category words to the words to search
 			wordsToSearch.extend(licenseSplited) #add the list of license words to the words to search
-			urls[category, license] = baseUrl + "+".join(wordsToSearch) #Create the url and add it to the list of urls
+			urls[category, license] = baseUrl + "+".join(wordsToSearch) #Create the url and add it to the dictionnary
 	return urls
 
 
@@ -28,12 +31,16 @@ def exportInJson(fileName, data): # export the data in a json file
 		f.write(json.dumps(data))
 
 
-def urlGenerator(categoryFileName, licenseFileName):
+def urlGenerator(categoryFileName, licenseFileName): #generate the urls
 	categories = readFile(categoryFileName)
 	licenses = readFile(licenseFileName)
 	urls = createUrls(categories,licenses)
 	return urls
 
+def cleanText(text): # transform the text got on the website into a number
+	numberList = [s for s in text.split() if s.isdigit()] #create a list of strings of the digit contained into the text
+	return int(''.join(numberList)) #add the digit together and transgorm it into an int
+	
 
 
 class BlogSpider(scrapy.Spider):
@@ -46,22 +53,20 @@ class BlogSpider(scrapy.Spider):
 
 		for cle in masterList.keys():
 			url = masterList[cle]
-			print ('#############')
-			print (url)
-			print ('#############')
 			yield scrapy.Request(url=url, callback=self.parse)
-
 
 
 
 	def parse(self, response):
 		for title in response.css('div#topDynamicContent'):#scrap the website page
-			yield {"test":title.css('span ::text').extract_first()} # extract the sentence
+			textCollected =title.css('span ::text').extract_first() # collect the information from the website
+			yield {"test":cleanText(textCollected)} # clean the text
 
 
 
-######Test the collection of categories and licenses####
+######Test#####
 # masterList= {}
 # masterList = urlGenerator('categories.json', 'licenses.json')
 # for cle in masterList.keys():
 # 	print(masterList[cle])
+# print(type (cleanText("1-16 sur sur 20\u00a0000 r\u00e9sultats pour ")))
