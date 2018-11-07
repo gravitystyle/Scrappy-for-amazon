@@ -12,17 +12,21 @@ def readFile(fileName): #extract a list from a json file -- use to create a list
 
 def createUrls(categories, licenses): # create a dictionnary of the research Urls links for Amazon --- Have to be changed for another website
 	baseUrl = "https://www.amazon.fr/s/ref=nb_sb_noss_1?__mk_fr_FR=ÅMÅŽÕÑ&url=search-alias%3Daps&field-keywords=" #This is the base use for the Amazon Url
-	urls = {}
+	urls = []
 	wordsToSearch = []
+	catLic = []
 	for category in categories:
 		for license in licenses:
+			url = ''
 			wordsToSearch = [] #Reinitialize the words to search
 			categorySplited = category.lower().split() #Create a list of words from the string of the category
 			licenseSplited = license.lower().split() #Create a list of words from the string of the license
 			wordsToSearch.extend(categorySplited) #add the list of category words to the words to search
 			wordsToSearch.extend(licenseSplited) #add the list of license words to the words to search
-			urls[category, license] = baseUrl + "+".join(wordsToSearch) #Create the url and add it to the dictionnary
-	return urls
+			catLic.append([category,license])
+			url = baseUrl + "+".join(wordsToSearch) #create the url
+			urls.append(url) #add url to the list
+	return urls, catLic
 
 
 
@@ -34,8 +38,8 @@ def exportInJson(fileName, data): # export the data in a json file
 def urlGenerator(categoryFileName, licenseFileName): #generate the urls
 	categories = readFile(categoryFileName)
 	licenses = readFile(licenseFileName)
-	urls = createUrls(categories,licenses)
-	return urls
+	urls, catLic = createUrls(categories,licenses)
+	return urls, catLic
 
 def cleanText(text): # transform the text got on the website into a number
 	numberList = [s for s in text.split() if s.isdigit()] #create a list of strings of the digit contained into the text
@@ -45,28 +49,42 @@ def cleanText(text): # transform the text got on the website into a number
 
 class BlogSpider(scrapy.Spider):
 	name = 'blogspider'
+	custom_settings = {'CONCURRENT_REQUESTS':'1'} #'DOWNLOAD_DELAY':'0.25',
+
+	urls = []
+	catLic = []
+
+
+	def __init__(self):
+		self.urls, self.catLic = urlGenerator('categories.json', 'licenses.json') #Create a list of urls crossing categories and licenses, generate json with this list
+		# exportInJson("urls.json",[x for x in self.masterList.values()])
 
 
 	def start_requests(self):
 		
-		masterList = urlGenerator('categories.json', 'licenses.json') #Create a list of urls crossing categories and licenses, generate json with this list
-
-		for cle in masterList.keys():
-			url = masterList[cle]
+		for url in self.urls:
 			yield scrapy.Request(url=url, callback=self.parse)
 
 
 
 	def parse(self, response):
-		for title in response.css('div#topDynamicContent'):#scrap the website page
-			textCollected =title.css('span ::text').extract_first() # collect the information from the website
-			yield {"test":cleanText(textCollected)} # clean the text
+		for title in response.css('div#topDynamicContent'):#scrap the website page based on the css tag
+			textCollected = title.css('span ::text').extract_first() # collect the information from the website
+			yield {'test': cleanText(textCollected)} # clean the text
 
+
+
+# if __name__ == '__main__':
+# 	scrapper = BlogSpider()
+# 	test=[]
+# 	test = scrapper.start_requests()
+# 	print(test)
+	
 
 
 ######Test#####
-# masterList= {}
-# masterList = urlGenerator('categories.json', 'licenses.json')
-# for cle in masterList.keys():
-# 	print(masterList[cle])
-# print(type (cleanText("1-16 sur sur 20\u00a0000 r\u00e9sultats pour ")))
+# urls = []
+# catLic = []
+# urls, catLic = urlGenerator('categories.json','licenses.json')
+# print(urls, catLic)
+# print(len(urls)," = ", len(catLic))
